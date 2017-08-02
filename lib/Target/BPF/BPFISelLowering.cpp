@@ -434,20 +434,6 @@ SDValue BPFTargetLowering::LowerCallResult(
   return Chain;
 }
 
-static void NegateCC(SDValue &LHS, SDValue &RHS, ISD::CondCode &CC) {
-  switch (CC) {
-  default:
-    break;
-  case ISD::SETULT:
-  case ISD::SETULE:
-  case ISD::SETLT:
-  case ISD::SETLE:
-    CC = ISD::getSetCCSwappedOperands(CC);
-    std::swap(LHS, RHS);
-    break;
-  }
-}
-
 SDValue BPFTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
@@ -455,8 +441,6 @@ SDValue BPFTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue RHS = Op.getOperand(3);
   SDValue Dest = Op.getOperand(4);
   SDLoc DL(Op);
-
-  NegateCC(LHS, RHS, CC);
 
   return DAG.getNode(BPFISD::BR_CC, DL, Op.getValueType(), Chain, LHS, RHS,
                      DAG.getConstant(CC, DL, MVT::i64), Dest);
@@ -469,8 +453,6 @@ SDValue BPFTargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue FalseV = Op.getOperand(3);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
   SDLoc DL(Op);
-
-  NegateCC(LHS, RHS, CC);
 
   SDValue TargetCC = DAG.getConstant(CC, DL, MVT::i64);
 
@@ -555,14 +537,26 @@ BPFTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case ISD::SETGT:
     NewCC = isSelectOp ? BPF::JSGT_rr : BPF::JSGT_ri;
     break;
+  case ISD::SETLT:
+    NewCC = isSelectOp ? BPF::JSLT_rr : BPF::JSLT_ri;
+    break;
   case ISD::SETUGT:
     NewCC = isSelectOp ? BPF::JUGT_rr : BPF::JUGT_ri;
+    break;
+  case ISD::SETULT:
+    NewCC = isSelectOp ? BPF::JULT_rr : BPF::JULT_ri;
     break;
   case ISD::SETGE:
     NewCC = isSelectOp ? BPF::JSGE_rr : BPF::JSGE_ri;
     break;
+  case ISD::SETLE:
+    NewCC = isSelectOp ? BPF::JSLE_rr : BPF::JSLE_ri;
+    break;
   case ISD::SETUGE:
     NewCC = isSelectOp ? BPF::JUGE_rr : BPF::JUGE_ri;
+    break;
+  case ISD::SETULE:
+    NewCC = isSelectOp ? BPF::JULE_rr : BPF::JULE_ri;
     break;
   case ISD::SETEQ:
     NewCC = isSelectOp ? BPF::JEQ_rr : BPF::JEQ_ri;
